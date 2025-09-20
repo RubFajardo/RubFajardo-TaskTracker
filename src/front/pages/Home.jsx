@@ -1,51 +1,109 @@
-import React, { useEffect } from "react"
-import rigoImageUrl from "../assets/img/rigo-baby.jpg";
-import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
+import React, { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom";
 
 export const Home = () => {
 
-	const { store, dispatch } = useGlobalReducer()
+	const backendUrl = import.meta.env.VITE_BACKEND_URL
 
-	const loadMessage = async () => {
+	const [isLogin, setIsLogin] = useState(false);
+	const [username, setUsername] = useState("");
+	const [password, setPassword] = useState("");
+	const navigate = useNavigate();
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+
 		try {
-			const backendUrl = import.meta.env.VITE_BACKEND_URL
+			let credentials = {
+				username,
+				password
+			};
 
-			if (!backendUrl) throw new Error("VITE_BACKEND_URL is not defined in .env file")
+			if (isLogin) {
 
-			const response = await fetch(backendUrl + "/api/hello")
-			const data = await response.json()
+				let response = await fetch(backendUrl + "api/login", {
+					method: "POST",
+					headers: { "Content-type": "application/json" },
+					body: JSON.stringify(credentials),
+				});
 
-			if (response.ok) dispatch({ type: "set_hello", payload: data.message })
+				if (!response.ok) {
+					alert("Error en login. Verifica tus credenciales.");
+					return;
+				}
 
-			return data
+				let data = await response.json();
+				localStorage.setItem("token", data.token);
+				localStorage.setItem("user", JSON.stringify(data.user));
+				alert("Login exitoso ✅");
+				console.log("Login:", data);
+				navigate("/mytasks")
 
-		} catch (error) {
-			if (error.message) throw new Error(
-				`Could not fetch the message from the backend.
-				Please check if the backend is running and the backend port is public.`
-			);
+			} else {
+				let response = await fetch(backendUrl + "api/register", {
+					method: "POST",
+					headers: { "Content-type": "application/json" },
+					body: JSON.stringify(credentials),
+				});
+
+				if (!response.ok) {
+					alert("Error al registrar. Intenta de nuevo.");
+					return;
+				}
+
+				alert("Registro exitoso 🎉 Ahora inicia sesión");
+				setIsLogin(true); 
+			}
+		} catch (err) {
+			alert("Error de conexión. Inténtalo otra vez.");
+			console.error(err);
 		}
-
-	}
-
-	useEffect(() => {
-		loadMessage()
-	}, [])
+	};
 
 	return (
-		<div className="text-center mt-5">
-			<h1 className="display-4">Hello Rigo!!</h1>
-			<p className="lead">
-				<img src={rigoImageUrl} className="img-fluid rounded-circle mb-3" alt="Rigo Baby" />
-			</p>
-			<div className="alert alert-info">
-				{store.message ? (
-					<span>{store.message}</span>
-				) : (
-					<span className="text-danger">
-						Loading message from the backend (make sure your python 🐍 backend is running)...
-					</span>
-				)}
+		<div className="container d-flex justify-content-center align-items-center mt-5">
+			<div className="card shadow-lg p-4" style={{ width: "350px" }}>
+				<h3 className="text-center mb-4">
+					{isLogin ? "Iniciar Sesión" : "Registrarse"}
+				</h3>
+				<form onSubmit={handleSubmit}>
+					<div className="mb-3">
+						<label className="form-label">Usuario</label>
+						<input
+							type="text"
+							className="form-control"
+							value={username}
+							onChange={(e) => setUsername(e.target.value)}
+							placeholder="Ingresa tu usuario"
+							required
+						/>
+					</div>
+					<div className="mb-3">
+						<label className="form-label">Contraseña</label>
+						<input
+							type="password"
+							className="form-control"
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							placeholder="Ingresa tu contraseña"
+							required
+						/>
+					</div>
+					<button type="submit" className="btn btn-primary w-100">
+						{isLogin ? "Entrar" : "Registrar"}
+					</button>
+				</form>
+				<div className="text-center mt-3">
+					<button
+						type="button"
+						className="btn btn-link"
+						onClick={() => setIsLogin(!isLogin)}
+					>
+						{isLogin
+							? "¿No tienes cuenta? Regístrate"
+							: "¿Ya tienes cuenta? Inicia sesión"}
+					</button>
+				</div>
 			</div>
 		</div>
 	);
